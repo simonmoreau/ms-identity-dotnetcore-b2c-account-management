@@ -50,7 +50,8 @@ namespace b2c_ms_graph
                             await UserService.DeleteUserById(graphClient);
                             break;
                         case "5":
-                            await UserService.SetPasswordByUserId(graphClient);
+                            // await UserService.SetPasswordByUserId(graphClient);
+                            await UserService.SearchUsers(graphClient);
                             break;
                         case "6":
                             await UserService.BulkCreate(config, graphClient);
@@ -60,6 +61,9 @@ namespace b2c_ms_graph
                             break;
                         case "8":
                             await UserService.ListUsersWithCustomAttribute(graphClient, config.B2cExtensionAppClientId);
+                            break;
+                        case "9":
+                            await UserService.UpdateCustomAttributeByUserId(graphClient, config.B2cExtensionAppClientId);
                             break;
                         case "help":
                             Program.PrintCommands();
@@ -81,7 +85,7 @@ namespace b2c_ms_graph
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"An error occurred: {ex}");
                 Console.ResetColor();
-            }           
+            }
             Console.ReadLine();
         }
 
@@ -95,10 +99,11 @@ namespace b2c_ms_graph
             Console.WriteLine("[2]      Get user by object ID");
             Console.WriteLine("[3]      Get user by sign-in name");
             Console.WriteLine("[4]      Delete user by object ID");
-            Console.WriteLine("[5]      Update user password");
+            Console.WriteLine("[5]      Search users");
             Console.WriteLine("[6]      Create users (bulk import)");
             Console.WriteLine("[7]      Create user with custom attributes and show result");
             Console.WriteLine("[8]      Get all users (one page) with custom attributes");
+            Console.WriteLine("[9]      Update custom attributes");
             Console.WriteLine("[help]   Show available commands");
             Console.WriteLine("[exit]   Exit the program");
             Console.WriteLine("-------------------------");

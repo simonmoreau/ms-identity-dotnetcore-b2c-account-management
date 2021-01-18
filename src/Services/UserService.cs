@@ -7,6 +7,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Graph;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace b2c_ms_graph
 {
@@ -33,6 +34,49 @@ namespace b2c_ms_graph
             }
         }
 
+        public static async Task SearchUsers(GraphServiceClient graphClient)
+        {
+            Console.Write("Enter search text: ");
+            string searchString = Console.ReadLine();
+
+            Console.WriteLine($"Looking for user with '{searchString}'...");
+
+            // Get all users (one page)
+            var result = await graphClient.Users
+                .Request()
+                .Select(e => new
+                {
+                    e.DisplayName,
+                    e.Id,
+                    e.Identities
+                })
+                .GetAsync();
+
+            List<User> foundUser = new List<User>();
+
+            foreach (User user in result.CurrentPage)
+            {
+
+                bool emailContainsSearchText = false;
+
+                foreach (ObjectIdentity objectIdentity in user.Identities)
+                {
+                    if (objectIdentity.IssuerAssignedId.Contains(searchString))
+                    {
+                        emailContainsSearchText = true;
+                    }
+
+                }
+
+                if (user.DisplayName.Contains(searchString) || emailContainsSearchText)
+                {
+                    Console.WriteLine(JsonConvert.SerializeObject(user));
+                }
+
+            }
+
+        }
+
         public static async Task ListUsersWithCustomAttribute(GraphServiceClient graphClient, string b2cExtensionAppClientId)
         {
             if (string.IsNullOrWhiteSpace(b2cExtensionAppClientId))
@@ -41,7 +85,7 @@ namespace b2c_ms_graph
             }
 
             // Declare the names of the custom attributes
-            const string customAttributeName1 = "FavouriteSeason";
+            const string customAttributeName1 = "ConversionCredits";
             const string customAttributeName2 = "LovesPets";
 
             // Get the complete name of the custom attribute (Azure AD extension)
@@ -149,6 +193,56 @@ namespace b2c_ms_graph
                    .DeleteAsync();
 
                 Console.WriteLine($"User with object ID '{userId}' successfully deleted.");
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ex.Message);
+                Console.ResetColor();
+            }
+        }
+
+        public static async Task UpdateCustomAttributeByUserId(GraphServiceClient graphClient, string b2cExtensionAppClientId)
+        {
+            if (string.IsNullOrWhiteSpace(b2cExtensionAppClientId))
+            {
+                throw new ArgumentException("B2C Extension App ClientId (ApplicationId) is missing in the appsettings.json. Get it from the App Registrations blade in the Azure portal. The app registration has the name 'b2c-extensions-app. Do not modify. Used by AADB2C for storing user data.'.", nameof(b2cExtensionAppClientId));
+            }
+
+            Console.Write("Enter user object ID: ");
+            string userId = Console.ReadLine();
+
+            Console.Write("Enter new value for the custom attribute: ");
+            string attribute = Console.ReadLine();
+
+            Console.WriteLine($"Looking for user with object ID '{userId}'...");
+
+            // Declare the names of the custom attributes
+            const string customAttributeName = "ConversionCredits";
+
+            // Get the complete name of the custom attribute (Azure AD extension)
+            Helpers.B2cCustomAttributeHelper helper = new Helpers.B2cCustomAttributeHelper(b2cExtensionAppClientId);
+            string ConversionCreditsAttributeName = helper.GetCompleteAttributeName(customAttributeName);
+
+            Console.WriteLine($"Create a user with the custom attributes '{customAttributeName}' (int)");
+
+            // Fill custom attributes
+            IDictionary<string, object> extensionInstance = new Dictionary<string, object>();
+            extensionInstance.Add(ConversionCreditsAttributeName, 10);
+
+            var user = new User
+            {
+                AdditionalData = extensionInstance
+            };
+
+            try
+            {
+                // Update user by object ID
+                await graphClient.Users[userId]
+                   .Request()
+                   .UpdateAsync(user);
+
+                Console.WriteLine($"User with object ID '{userId}' successfully updated.");
             }
             catch (Exception ex)
             {
@@ -309,7 +403,7 @@ namespace b2c_ms_graph
                     Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
                 }
             }
-            catch (ServiceException ex) 
+            catch (ServiceException ex)
             {
                 if (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
@@ -318,7 +412,7 @@ namespace b2c_ms_graph
                     Console.WriteLine();
                     Console.WriteLine(ex.Message);
                     Console.ResetColor();
-                }                
+                }
             }
             catch (Exception ex)
             {
