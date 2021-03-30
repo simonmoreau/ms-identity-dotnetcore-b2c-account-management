@@ -111,24 +111,31 @@ namespace b2c_ms_graph
             }
         }
 
-        public static async Task GetUserById(GraphServiceClient graphClient)
+        public static async Task GetUserById(GraphServiceClient graphClient, string b2cExtensionAppClientId)
         {
             Console.Write("Enter user object ID: ");
             string userId = Console.ReadLine();
 
             Console.WriteLine($"Looking for user with object ID '{userId}'...");
 
+            if (string.IsNullOrWhiteSpace(b2cExtensionAppClientId))
+            {
+                throw new ArgumentException("B2C Extension App ClientId (ApplicationId) is missing in the appsettings.json. Get it from the App Registrations blade in the Azure portal. The app registration has the name 'b2c-extensions-app. Do not modify. Used by AADB2C for storing user data.'.", nameof(b2cExtensionAppClientId));
+            }
+
             try
             {
+                // Declare the names of the custom attributes
+                const string customAttributeName = "ConversionCredits";
+
+                // Get the complete name of the custom attribute (Azure AD extension)
+                Helpers.B2cCustomAttributeHelper helper = new Helpers.B2cCustomAttributeHelper(b2cExtensionAppClientId);
+                string ConversionCreditsAttributeName = helper.GetCompleteAttributeName(customAttributeName);
+
                 // Get user by object ID
                 var result = await graphClient.Users[userId]
                     .Request()
-                    .Select(e => new
-                    {
-                        e.DisplayName,
-                        e.Id,
-                        e.Identities
-                    })
+                    .Select($"id,givenName,surName,displayName,identities,{ConversionCreditsAttributeName}")
                     .GetAsync();
 
                 if (result != null)
@@ -228,7 +235,8 @@ namespace b2c_ms_graph
 
             // Fill custom attributes
             IDictionary<string, object> extensionInstance = new Dictionary<string, object>();
-            extensionInstance.Add(ConversionCreditsAttributeName, 10);
+            int attributeValue = Convert.ToInt16(attribute);
+            extensionInstance.Add(ConversionCreditsAttributeName, attributeValue);
 
             var user = new User
             {

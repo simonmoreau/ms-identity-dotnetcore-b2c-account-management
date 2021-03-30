@@ -41,7 +41,7 @@ namespace b2c_ms_graph
                             await UserService.ListUsers(graphClient);
                             break;
                         case "2":
-                            await UserService.GetUserById(graphClient);
+                            await UserService.GetUserById(graphClient, config.B2cExtensionAppClientId);
                             break;
                         case "3":
                             await UserService.GetUserBySignInName(config, graphClient);
